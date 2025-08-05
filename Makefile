@@ -1,12 +1,14 @@
 ASM = nasm
+CC = gcc
 
 SRC_DIR = src
 BUILD_DIR = build
+TOOLS_DIR = tools
 
-.PHONY: all floppy_image kernel bootloader clean run
+.PHONY: all floppy_image kernel bootloader clean run tools_fat
 
 # Default target
-all: floppy_image
+all: floppy_image tools_fat
 
 # Create the build directory if it doesn't exist
 $(BUILD_DIR):
@@ -29,6 +31,21 @@ $(BUILD_DIR)/kernel.bin: $(SRC_DIR)/kernel/main.asm | $(BUILD_DIR)
 	$(ASM) $(SRC_DIR)/kernel/main.asm -f bin -o $(BUILD_DIR)/kernel.bin
 
 #
+# Tools 
+#
+tools_fat: $(BUILD_DIR)/tools/fat
+
+$(BUILD_DIR)/tools/fat: $(TOOLS_DIR)/fat/fat.c | $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)/tools
+	$(CC) -g -o $(BUILD_DIR)/tools/fat $(TOOLS_DIR)/fat/fat.c
+
+
+#Always
+always:
+	mkdir -p $(BUILD_DIR)
+
+
+#
 # Floppy image
 #
 floppy_image: $(BUILD_DIR)/main_floppy.img
@@ -37,6 +54,7 @@ $(BUILD_DIR)/main_floppy.img: $(BUILD_DIR)/bootloader.bin $(BUILD_DIR)/kernel.bi
 	dd if=/dev/zero of=$(BUILD_DIR)/main_floppy.img bs=512 count=2880
 	mkfs.fat -F 12 -n "NBOS" $(BUILD_DIR)/main_floppy.img
 	mcopy -i $(BUILD_DIR)/main_floppy.img $(BUILD_DIR)/kernel.bin "::kernel.bin"
+	mcopy -i $(BUILD_DIR)/main_floppy.img test.txt "::test.txt"
 	dd if=$(BUILD_DIR)/bootloader.bin of=$(BUILD_DIR)/main_floppy.img conv=notrunc bs=512 count=1
 
 # Clean target
